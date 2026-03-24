@@ -36,11 +36,37 @@ module StowMan
         return 2
       end
 
+      config = ConfigLoader.load(options.config_path)
+      effective_verbose = resolve_verbose(options.verbose, config.default_verbose)
+
+      runner = StowRunner.new(
+        stow_bin: config.stow_bin,
+        package_root: pwd,
+        target_dir: config.target_dir,
+        verbose: effective_verbose,
+        dry_run: options.dry_run
+      )
+      manager = AppManager.new(package_root: pwd, target_dir: config.target_dir, runner: runner)
+
+      run_command(options, manager, out: out, quiet: options.quiet)
       0
     rescue OptionParser::ParseError => e
       err.puts("Argument error: #{e.message}")
       err.puts(help_text)
       2
+    rescue UsageError => e
+      err.puts("Usage error: #{e.message}")
+      2
+    rescue ConfigError => e
+      err.puts("Config error: #{e.message}")
+      3
+    rescue AppError => e
+      err.puts("App error: #{e.message}")
+      4
+    rescue CommandError => e
+      err.puts("Command error: #{e.message}")
+      err.puts(e.stderr) unless e.stderr.to_s.empty?
+      1
     end
 
     def self.parse(argv, pwd: Dir.pwd)
@@ -57,11 +83,12 @@ module StowMan
 
       verbose_count = 0
       explicit_verbose = false
-      parser = option_parser(options, verbose_count_ref: -> { verbose_count }, verbose_count_set: lambda { |v|
-        verbose_count = v
-      }, explicit_verbose_set: lambda {
-           explicit_verbose = true
-         })
+      parser = option_parser(
+        options,
+        verbose_count_ref: -> { verbose_count },
+        verbose_count_set: ->(v) { verbose_count = v },
+        explicit_verbose_set: -> { explicit_verbose = true }
+      )
 
       remaining = argv.dup
       parser.order!(remaining)
@@ -81,6 +108,50 @@ module StowMan
         explicit_verbose_set: -> {}
       ).to_s
     end
+
+    def self.resolve_verbose(cli_verbose, default_verbose)
+      return cli_verbose unless cli_verbose.nil?
+
+      default_verbose
+    end
+
+    def self.run_command(options, manager, out:, quiet:)
+      case options.command
+      when 'add'
+        app = require_app_arg!(options.command_args, 'add')
+        manager.add(app)
+        out.puts("Added app '#{app}'") unless quiet
+      when 'list'
+        raise UsageError, 'list does not accept arguments' unless options.command_args.empty?
+
+        manager.list.each { |app| out.puts(app) }
+      when 'remove'
+        app = require_app_arg!(options.command_args, 'remove')
+        manager.remove(app)
+        out.puts("Removed app '#{app}'") unless quiet
+      when 'relink'
+        app = require_app_arg!(options.command_args, 'relink')
+        manager.relink(app)
+        out.puts("Relinked app '#{app}'") unless quiet
+      when 'relink-all'
+        raise UsageError, 'relink-all does not accept arguments' unless options.command_args.empty?
+
+        apps = manager.relink_all
+        out.puts("Relinked #{apps.length} app(s)") unless quiet
+      else
+        raise UsageError, "Unknown command: #{options.command}"
+      end
+    end
+    private_class_method :run_command
+
+    def self.require_app_arg!(args, command)
+      app = args.first
+      raise UsageError, "#{command} requires APP argument" if app.nil? || app.empty?
+      raise UsageError, "#{command} accepts only one APP argument" if args.length > 1
+
+      app
+    end
+    private_class_method :require_app_arg!
 
     def self.option_parser(options, verbose_count_ref:, verbose_count_set:, explicit_verbose_set:)
       OptionParser.new do |opts|
