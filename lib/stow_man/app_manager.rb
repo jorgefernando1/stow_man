@@ -1,7 +1,10 @@
+# frozen_string_literal: true
+
 require 'pathname'
 require 'fileutils'
 
 module StowMan
+  # Main class that executes the app
   class AppManager
     def initialize(package_root:, target_dir:, runner:)
       @package_root = File.expand_path(package_root)
@@ -16,7 +19,7 @@ module StowMan
         raise AppError, "App path exists but is not a directory: #{app}"
       end
 
-      Dir.mkdir(app_dir) unless Dir.exist?(app_dir)
+      FileUtils.mkdir_p(app_dir)
       @runner.stow(app)
     end
 
@@ -44,7 +47,6 @@ module StowMan
 
       @runner.unstow(app)
       FileUtils.rm_rf(app_dir)
-      true
     end
 
     def relink(app)

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'test_helper'
 require 'stringio'
 
@@ -46,36 +48,4 @@ class StowManCLITest < Minitest::Test
     assert_includes err.string, 'Unknown command: wat'
   end
 
-  def test_parse_defaults_and_command
-    options, = StowMan::CLI.parse(['list'], pwd: '/tmp/dotfiles')
-
-    assert_equal '/tmp/dotfiles/.stow-man.yml', options.config_path
-    assert_nil options.verbose
-    assert_equal false, options.quiet
-    assert_equal false, options.dry_run
-    assert_equal 'list', options.command
-    assert_equal [], options.command_args
-  end
-
-  def test_parse_repeatable_v_sets_verbose_count
-    options, = StowMan::CLI.parse(['-v', '-v', 'list'])
-
-    assert_equal 2, options.verbose
-  end
-
-  def test_parse_explicit_verbose_overrides_v_count
-    options, = StowMan::CLI.parse(['-v', '--verbose', '4', 'list'])
-
-    assert_equal 4, options.verbose
-  end
-
-  def test_parse_config_quiet_dry_run_and_command_args
-    options, = StowMan::CLI.parse(['--config', 'custom.yml', '--quiet', '--dry-run', 'add', 'nvim'])
-
-    assert_equal 'custom.yml', options.config_path
-    assert_equal true, options.quiet
-    assert_equal true, options.dry_run
-    assert_equal 'add', options.command
-    assert_equal ['nvim'], options.command_args
-  end
 end

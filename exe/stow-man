@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
 
-require_relative "../lib/stow_man"
+require_relative '../lib/stow_man'
 
 exit StowMan::CLI.start(ARGV)
