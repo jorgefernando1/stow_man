@@ -4,8 +4,9 @@ require 'open3'
 require 'shellwords'
 
 module StowMan
+  # Class responsible to actually execute a stow command in the terminal.
   class StowRunner
-    CommandResult = Struct.new(:status, :stdout, :stderr, keyword_init: true)
+    CommandResult = Data.define(:status, :stdout, :stderr)
 
     def initialize(stow_bin:, package_root:, target_dir:, verbose:, dry_run: false)
       @stow_bin = stow_bin
@@ -36,8 +37,23 @@ module StowMan
     end
 
     def run_command(command)
-      return CommandResult.new(status: 0, stdout: "DRY-RUN: #{command_string(command)}", stderr: '') if @dry_run
+      return dry_run_result(command) if @dry_run
 
+      execute_in_shell!(command)
+    rescue Errno::ENOENT => e
+      raise CommandError.new(
+        "Command failed to start: #{command.first} (#{e.message})",
+        command: command,
+        status: 127,
+        stderr: e.message
+      )
+    end
+
+    def dry_run_result(command)
+      CommandResult.new(status: 0, stdout: "DRY-RUN: #{command_string(command)}", stderr: '')
+    end
+
+    def execute_in_shell!(command)
       stdout, stderr, status = Open3.capture3(*command)
       return CommandResult.new(status: status.exitstatus, stdout: stdout, stderr: stderr) if status.success?
 
@@ -46,13 +62,6 @@ module StowMan
         command: command,
         status: status.exitstatus,
         stderr: stderr
-      )
-    rescue Errno::ENOENT => e
-      raise CommandError.new(
-        "Command failed to start: #{command.first} (#{e.message})",
-        command: command,
-        status: 127,
-        stderr: e.message
       )
     end
 

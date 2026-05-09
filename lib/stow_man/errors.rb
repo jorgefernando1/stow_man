@@ -7,6 +7,8 @@ module StowMan
   class ConfigError < Error; end
   class AppError < Error; end
 
+  # Main generic error class for any issues related  to executing the stow command,
+  # such as command not found, non-zero exit status, etc.
   class CommandError < Error
     attr_reader :command, :status, :stderr
 

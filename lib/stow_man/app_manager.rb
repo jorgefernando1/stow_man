@@ -14,6 +14,7 @@ module StowMan
 
     def add(app)
       validate_app_name!(app)
+
       app_dir = app_path(app)
       if File.exist?(app_dir) && !File.directory?(app_dir)
         raise AppError, "App path exists but is not a directory: #{app}"
@@ -75,9 +76,17 @@ module StowMan
     end
 
     def validate_app_name!(app)
-      if app.nil? || app.empty? || app.include?('/') || app.include?('\\') || app == '.' || app == '..' || app.start_with?('~')
-        raise AppError, "Invalid app name: #{app.inspect}"
-      end
+      return unless app_name_blank?(app) || app_name_contains_invalid_path?(app)
+
+      raise AppError, "Invalid app name: #{app.inspect}"
+    end
+
+    def app_name_blank?(app)
+      app.nil? || app.empty?
+    end
+
+    def app_name_contains_invalid_path?(app)
+      app.include?('/') || app.include?('\\') || app == '.' || app == '..' || app.start_with?('~')
     end
 
     def resolve_symlink_target(symlink_path)
