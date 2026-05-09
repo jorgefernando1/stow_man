@@ -1,11 +1,5 @@
-Metrics/MethodLength:
-  Exclude:
-    - 'test/*'
-    - README.md
-    - TASKS.md
-Metrics/AbcSize:
-  Exclude:
-    - 'test/*'
-    
 AllCops:
   NewCops: enable
+  Exclude:
+    - 'test/**/*'
+    - 'README.md'
